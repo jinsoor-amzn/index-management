@@ -18,6 +18,7 @@ package com.amazon.opendistroforelasticsearch.indexstatemanagement
 import com.amazon.opendistroforelasticsearch.indexstatemanagement.models.ManagedIndexConfig
 import com.amazon.opendistroforelasticsearch.indexstatemanagement.models.Policy
 import com.amazon.opendistroforelasticsearch.indexstatemanagement.resthandler.RestDeletePolicyAction
+import com.amazon.opendistroforelasticsearch.indexstatemanagement.resthandler.RestExplainAction
 import com.amazon.opendistroforelasticsearch.indexstatemanagement.resthandler.RestGetPolicyAction
 import com.amazon.opendistroforelasticsearch.indexstatemanagement.resthandler.RestIndexPolicyAction
 import com.amazon.opendistroforelasticsearch.indexstatemanagement.settings.ManagedIndexSettings
@@ -57,7 +58,8 @@ internal class IndexStateManagementPlugin : JobSchedulerExtension, ActionPlugin,
 
     companion object {
         const val PLUGIN_NAME = "opendistro-ism"
-        const val POLICY_BASE_URI = "/_opendistro/_ism/policies"
+        const val ISM_BASE_URI = "/_opendistro/_ism"
+        const val POLICY_BASE_URI = "$ISM_BASE_URI/policies"
         const val INDEX_STATE_MANAGEMENT_INDEX = ".opendistro-ism-config"
         const val INDEX_STATE_MANAGEMENT_JOB_TYPE = "opendistro-managed-index"
     }
@@ -71,7 +73,7 @@ internal class IndexStateManagementPlugin : JobSchedulerExtension, ActionPlugin,
     }
 
     override fun getJobRunner(): ScheduledJobRunner {
-        return ManagedIndexRunner.instance
+        return ManagedIndexRunner
     }
 
     override fun getJobParser(): ScheduledJobParser {
@@ -106,7 +108,8 @@ internal class IndexStateManagementPlugin : JobSchedulerExtension, ActionPlugin,
         return listOf(
             RestIndexPolicyAction(settings, restController, indexStateManagementIndices),
             RestGetPolicyAction(settings, restController),
-            RestDeletePolicyAction(settings, restController)
+            RestDeletePolicyAction(settings, restController),
+            RestExplainAction(settings, restController)
         )
     }
 
@@ -121,7 +124,7 @@ internal class IndexStateManagementPlugin : JobSchedulerExtension, ActionPlugin,
         nodeEnvironment: NodeEnvironment,
         namedWriteableRegistry: NamedWriteableRegistry
     ): Collection<Any> {
-        val managedIndexRunner = ManagedIndexRunner.instance
+        val managedIndexRunner = ManagedIndexRunner.registerClusterService(clusterService)
         indexStateManagementIndices = IndexStateManagementIndices(client.admin().indices(), clusterService)
         val managedIndexCoordinator = ManagedIndexCoordinator(environment.settings(),
                 client, clusterService, threadPool, indexStateManagementIndices)
